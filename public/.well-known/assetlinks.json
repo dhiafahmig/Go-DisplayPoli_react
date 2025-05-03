@@ -1,0 +1,10 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "display_poli",
+      "package_name": "com.display.poli",
+      "sha256_cert_fingerprints": [""]
+    }
+  }
+] 

@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test CORS & WebSocket</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    button {
+      padding: 10px;
+      margin: 5px;
+      cursor: pointer;
+    }
+    .success {
+      color: green;
+      font-weight: bold;
+    }
+    .error {
+      color: red;
+      font-weight: bold;
+    }
+    pre {
+      background: #f5f5f5;
+      padding: 10px;
+      overflow: auto;
+      max-height: 300px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Test CORS & WebSocket</h1>
+
+  <div>
+    <h2>Test API Connection</h2>
+    <div>
+      <label for="kdDisplay">Kode Display:</label>
+      <input type="text" id="kdDisplay" value="1">
+      <button onclick="testApi()">Test API</button>
+    </div>
+    <div id="apiResult"></div>
+  </div>
+
+  <div>
+    <h2>Test WebSocket Connection</h2>
+    <div>
+      <label for="wsKdDisplay">Kode Display:</label>
+      <input type="text" id="wsKdDisplay" value="1">
+      <button onclick="testWebSocket()">Connect WebSocket</button>
+      <button onclick="disconnectWebSocket()">Disconnect</button>
+    </div>
+    <div id="wsStatus"></div>
+    <div>
+      <h3>Messages:</h3>
+      <pre id="wsMessages"></pre>
+    </div>
+  </div>
+
+  <script>
+    // Test API
+    async function testApi() {
+      const kdDisplay = document.getElementById('kdDisplay').value;
+      const resultDiv = document.getElementById('apiResult');
+      
+      try {
+        resultDiv.innerHTML = "Loading...";
+        const response = await fetch(`/api/display/poli/${kdDisplay}`);
+        const data = await response.json();
+        
+        resultDiv.innerHTML = `
+          <p class="success">API connection successful!</p>
+          <pre>${JSON.stringify(data, null, 2)}</pre>
+        `;
+      } catch (error) {
+        resultDiv.innerHTML = `
+          <p class="error">API connection failed: ${error.message}</p>
+        `;
+      }
+    }
+
+    // WebSocket
+    let socket = null;
+
+    function testWebSocket() {
+      const kdDisplay = document.getElementById('wsKdDisplay').value;
+      const statusDiv = document.getElementById('wsStatus');
+      const messagesDiv = document.getElementById('wsMessages');
+      
+      statusDiv.innerHTML = "Connecting...";
+      
+      // Try different URLs
+      const urls = [
+        `ws://${window.location.host}/ws/${kdDisplay}`,
+        `ws://localhost:8080/ws/${kdDisplay}`,
+        `ws://127.0.0.1:8080/ws/${kdDisplay}`
+      ];
+      
+      tryWebSocketConnection(urls, 0);
+    }
+
+    function tryWebSocketConnection(urls, index) {
+      if (index >= urls.length) {
+        const statusDiv = document.getElementById('wsStatus');
+        statusDiv.innerHTML = `<p class="error">All WebSocket connection attempts failed</p>`;
+        return;
+      }
+      
+      const url = urls[index];
+      const statusDiv = document.getElementById('wsStatus');
+      const messagesDiv = document.getElementById('wsMessages');
+      
+      statusDiv.innerHTML = `Connecting to ${url}...`;
+      
+      try {
+        socket = new WebSocket(url);
+        
+        socket.onopen = () => {
+          statusDiv.innerHTML = `<p class="success">Connected to ${url}</p>`;
+        };
+        
+        socket.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            messagesDiv.innerHTML += `${new Date().toLocaleTimeString()}: ${JSON.stringify(data)}\n`;
+          } catch (e) {
+            messagesDiv.innerHTML += `${new Date().toLocaleTimeString()}: ${event.data}\n`;
+          }
+        };
+        
+        socket.onclose = (event) => {
+          if (event.wasClean) {
+            statusDiv.innerHTML = `<p>Connection closed cleanly, code=${event.code} reason=${event.reason}</p>`;
+          } else {
+            statusDiv.innerHTML = `<p class="error">Connection died</p>`;
+          }
+        };
+        
+        socket.onerror = (error) => {
+          console.error('WebSocket Error:', error);
+          statusDiv.innerHTML += `<p class="error">Error connecting to ${url}</p>`;
+          socket.close();
+          
+          // Try next URL
+          setTimeout(() => {
+            tryWebSocketConnection(urls, index + 1);
+          }, 500);
+        };
+      } catch (error) {
+        statusDiv.innerHTML += `<p class="error">Error creating WebSocket: ${error.message}</p>`;
+        
+        // Try next URL
+        setTimeout(() => {
+          tryWebSocketConnection(urls, index + 1);
+        }, 500);
+      }
+    }
+
+    function disconnectWebSocket() {
+      if (socket) {
+        socket.close();
+        socket = null;
+        document.getElementById('wsStatus').innerHTML = "<p>Disconnected</p>";
+      }
+    }
+  </script>
+</body>
+</html> 
