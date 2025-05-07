@@ -4,8 +4,8 @@ import {
     faCog, 
     faListAlt, 
     faDesktop, 
-    faBullhorn, 
-    faPlayCircle 
+    faBullhorn,
+    faSync
 } from '@fortawesome/free-solid-svg-icons';
 import { faCopyright } from '@fortawesome/free-regular-svg-icons';
 
@@ -16,6 +16,8 @@ import bpjsLogo from '../assets/images/bpjs.png';
 const PengaturanPoli = () => {
     const [polis, setPolis] = useState([]);
     const [currentTime, setCurrentTime] = useState(new Date());
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState(null);
 
     useEffect(() => {
         // Update jam setiap detik
@@ -31,7 +33,13 @@ const PengaturanPoli = () => {
 
     const loadPolis = async () => {
         try {
+            setIsLoading(true);
             const response = await fetch('/api/poli');
+            
+            if (!response.ok) {
+                throw new Error(`Error ${response.status}: ${response.statusText}`);
+            }
+            
             const data = await response.json();
             
             // Urutkan data poli
@@ -55,8 +63,12 @@ const PengaturanPoli = () => {
             });
             
             setPolis(sortedData);
+            setIsLoading(false);
+            setError(null);
         } catch (error) {
             console.error('Error loading polis:', error);
+            setError('Gagal memuat data poli. Silakan coba lagi nanti.');
+            setIsLoading(false);
         }
     };
 
@@ -106,43 +118,75 @@ const PengaturanPoli = () => {
             <div className="container mx-auto px-6 py-10">
                 <div className="bg-white rounded-xl shadow-[0_10px_25px_-5px_rgba(34,197,94,0.2),0_8px_10px_-6px_rgba(34,197,94,0.2)] overflow-hidden mb-12">
                     <div className="bg-[#16a34a] text-white py-4 px-6">
-                        <div className="flex items-center">
-                            <FontAwesomeIcon icon={faListAlt} className="text-xl mr-3 text-green-200" />
-                            <h2 className="text-xl font-semibold">Daftar Poli</h2>
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center">
+                                <FontAwesomeIcon icon={faListAlt} className="text-xl mr-3 text-green-200" />
+                                <h2 className="text-xl font-semibold">Daftar Poli</h2>
+                            </div>
+                            {!isLoading && (
+                                <button 
+                                    onClick={loadPolis} 
+                                    className="bg-green-700 hover:bg-green-800 text-white text-sm px-3 py-1 rounded transition-colors duration-300 flex items-center"
+                                >
+                                    <FontAwesomeIcon icon={faSync} className="mr-1" />
+                                    Refresh
+                                </button>
+                            )}
                         </div>
                     </div>
                     <div className="p-6 overflow-x-auto">
-                        <table className="min-w-full divide-y divide-gray-200 rounded-lg">
-                            <thead className="bg-gray-50">
-                                <tr>
-                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Ruang Poli</th>
-                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kode Display</th>
-                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Akses Cepat</th>
-                                </tr>
-                            </thead>
-                            <tbody className="bg-white divide-y divide-gray-200">
-                                {polis.map((poli) => (
-                                    <tr key={poli.kd_ruang_poli} className="hover:bg-gray-50 transition-colors">
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Poli {poli.kd_ruang_poli}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{poli.kd_display}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                                            <a href={`/display/${poli.kd_display}`} target="_blank" rel="noopener noreferrer" 
-                                               className="inline-flex items-center px-3 py-1 bg-green-50 hover:bg-green-100 text-green-700 rounded-md text-xs transition-all duration-300 border border-green-200">
-                                                <FontAwesomeIcon icon={faDesktop} className="mr-1" /> Display
-                                            </a>
-                                            <a href={`http://localhost:8080/panggilpoli/${poli.kd_ruang_poli}/DISPLAY1`} target="_blank" rel="noopener noreferrer"
-                                               className="inline-flex items-center px-3 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-md text-xs transition-all duration-300 border border-blue-200">
-                                                <FontAwesomeIcon icon={faBullhorn} className="mr-1" /> Panggil
-                                            </a>
-                                            <a href={`/autorun/${poli.kd_display}`} target="_blank" rel="noopener noreferrer"
-                                               className="inline-flex items-center px-3 py-1 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-md text-xs transition-all duration-300 border border-purple-200">
-                                                <FontAwesomeIcon icon={faPlayCircle} className="mr-1" /> Auto
-                                            </a>
-                                        </td>
+                        {isLoading ? (
+                            <div className="text-center py-8">
+                                <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-green-500 mx-auto mb-4"></div>
+                                <p className="text-gray-600">Memuat data poli...</p>
+                            </div>
+                        ) : error ? (
+                            <div className="text-center py-8 bg-red-50 rounded-lg">
+                                <FontAwesomeIcon icon={faSync} className="text-red-500 text-4xl mb-4" />
+                                <p className="text-red-600 font-medium mb-4">{error}</p>
+                                <button 
+                                    onClick={loadPolis}
+                                    className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
+                                >
+                                    Coba Lagi
+                                </button>
+                            </div>
+                        ) : (
+                            <table className="min-w-full divide-y divide-gray-200 rounded-lg">
+                                <thead className="bg-gray-50">
+                                    <tr>
+                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Ruang Poli</th>
+                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kode Display</th>
+                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Akses Cepat</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody className="bg-white divide-y divide-gray-200">
+                                    {polis.map((poli) => (
+                                        <tr key={poli.kd_ruang_poli} className="hover:bg-gray-50 transition-colors">
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <p className="text-sm font-medium text-gray-800">Poli {poli.kd_ruang_poli}</p>
+                                                <p className="text-xs text-gray-500">{poli.nm_poli || '-'}</p>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                <span className="bg-green-50 text-green-700 py-1 px-2 rounded-md text-xs font-medium border border-green-200">
+                                                    {poli.kd_display || 'DISPLAY1'}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                                                <a href={`/display/${poli.kd_display || 'DISPLAY1'}`} target="_blank" rel="noopener noreferrer" 
+                                                   className="inline-flex items-center px-3 py-1 bg-green-50 hover:bg-green-100 text-green-700 rounded-md text-xs transition-all duration-300 border border-green-200">
+                                                    <FontAwesomeIcon icon={faDesktop} className="mr-1" /> Display
+                                                </a>
+                                                <a href={`/panggil/${poli.kd_ruang_poli}`} target="_blank" rel="noopener noreferrer"
+                                                   className="inline-flex items-center px-3 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-md text-xs transition-all duration-300 border border-blue-200">
+                                                    <FontAwesomeIcon icon={faBullhorn} className="mr-1" /> Panggil
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        )}
                     </div>
                 </div>
             </div>

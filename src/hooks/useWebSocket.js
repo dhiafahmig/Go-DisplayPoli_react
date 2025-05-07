@@ -187,11 +187,11 @@ const useWebSocket = (kdDisplay) => {
     // Urutan penting - coba koneksi langsung terlebih dahulu
     const urlsToTry = [
       // Koneksi langsung ke backend
-      `ws://localhost:8080/ws/${kdDisplay}`,
+      `ws://localhost:8080/ws/antrian/${kdDisplay}`,
       // Koneksi melalui IP lokal
-      `ws://127.0.0.1:8080/ws/${kdDisplay}`,
+      `ws://127.0.0.1:8080/ws/antrian/${kdDisplay}`,
       // Koneksi melalui proxy React
-      `${protocol}//${host}/ws/${kdDisplay}`
+      `${protocol}//${host}/ws/antrian/${kdDisplay}`
     ];
     
     return attemptConnection(urlsToTry);
