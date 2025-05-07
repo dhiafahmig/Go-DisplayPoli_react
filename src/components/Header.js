@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import rsLogo from '../assets/images/rs.png';
+import bpjsLogo from '../assets/images/bpjs.png';
 
 const Header = () => {
   const [currentTime, setCurrentTime] = useState('--:--:--');
@@ -33,8 +35,8 @@ const Header = () => {
           <div className="flex items-center mb-3 md:mb-0">
             <div className="flex items-center mr-4">
               {/* Logo RS - Diperbesar */}
-              <div className="bg-white p-2 rounded-lg shadow-md h-20 flex items-center mr-4">
-                <img src={`${process.env.PUBLIC_URL}/assets/images/rs.png`} alt="Bumi Waras Logo" className="h-full" />
+              <div className="bg-white p-3 rounded-lg shadow-md h-24 flex items-center mr-4">
+                <img src={rsLogo} alt="Bumi Waras Logo" className="h-20 w-auto" />
               </div>
               <i className="fas fa-hospital-alt text-4xl mr-3 text-green-100"></i>
             </div>
@@ -49,8 +51,8 @@ const Header = () => {
               <span id="jam">{currentTime}</span>
             </div>
             {/* Logo BPJS */}
-            <div className="bg-white p-2 rounded-lg shadow-md h-16 flex items-center">
-              <img src={`${process.env.PUBLIC_URL}/assets/images/bpjs.png`} alt="BPJS Logo" className="h-full" />
+            <div className="bg-white p-2 rounded-lg shadow-md h-20 flex items-center">
+              <img src={bpjsLogo} alt="BPJS Logo" className="h-16 w-auto" />
             </div>
           </div>
         </div>

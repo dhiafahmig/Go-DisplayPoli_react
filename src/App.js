@@ -2,11 +2,13 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import DisplayPoli from './pages/DisplayPoli';
 import PanggilPasien from './pages/PanggilPasien';
+import PengaturanPoli from './pages/PengaturanPoli';
 
 function App() {
   return (
     <Router>
       <Routes>
+        <Route path="/" element={<PengaturanPoli />} />
         <Route path="/display/:kdDisplay" element={<DisplayPoli />} />
         <Route path="/panggil/:kdPoli" element={<PanggilPasien />} />
         <Route path="*" element={<div className="flex items-center justify-center h-screen">
