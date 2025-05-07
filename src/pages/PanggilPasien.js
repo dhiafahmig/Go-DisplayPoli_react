@@ -1,98 +1,208 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import axios from 'axios';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
-import useWebSocket from '../hooks/useWebSocket';
+
+// Konfigurasi base URL untuk axios
+axios.defaults.baseURL = 'http://localhost:8080';
 
 const PanggilPasien = () => {
-  const { kdPoli } = useParams();
-  const [poliData, setPoliData] = useState(null);
+  const { kd_ruang_poli } = useParams();
   const [antrian, setAntrian] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [selectedPasien, setSelectedPasien] = useState(null);
-  const [callStatus, setCallStatus] = useState('idle');
+  const [currentTime, setCurrentTime] = useState(new Date());
+  const [htmlContent, setHtmlContent] = useState('');
   const containerRef = useRef(null);
-  
-  // Mengambil data poli dan antrian pasien
+
+  // Update jam setiap detik
   useEffect(() => {
-    const fetchData = async () => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  // Mengambil data HTML
+  useEffect(() => {
+    const fetchHtmlContent = async () => {
       try {
         setIsLoading(true);
-        const poliResponse = await axios.get(`/api/poli/${kdPoli}`);
-        setPoliData(poliResponse.data);
+        // Menggunakan endpoint yang sesuai dengan handler Go
+        const url = `http://localhost:8080/panggilpoli/${kd_ruang_poli}/DISPLAY1`;
+        console.log('Mencoba mengambil data dari:', url);
         
-        const antrianResponse = await axios.get(`/api/poli/${kdPoli}/antrian`);
-        setAntrian(antrianResponse.data);
+        const response = await axios.get(url, {
+          headers: {
+            'Accept': 'text/html',
+          },
+          responseType: 'text'
+        });
+        
+        setHtmlContent(response.data);
+        
+        // Mencoba parse data pasien dari HTML
+        try {
+          const pasienList = extractPasienFromHtml(response.data);
+          setAntrian(pasienList);
+        } catch (parseError) {
+          console.error('Error saat parsing HTML:', parseError);
+          setError('Gagal mengekstrak data pasien dari respon server');
+        }
+        
         setIsLoading(false);
       } catch (error) {
-        console.error('Error fetching data:', error);
-        setError(`Gagal memuat data: ${error.message}`);
+        console.error('Error detail:', {
+          message: error.message,
+          response: error.response?.data,
+          status: error.response?.status
+        });
+        
+        setError(`Gagal memuat data: ${error.response?.data?.message || error.message}`);
         setIsLoading(false);
       }
     };
+
+    fetchHtmlContent();
+    const intervalId = setInterval(fetchHtmlContent, 30000);
+    return () => clearInterval(intervalId);
+  }, [kd_ruang_poli]);
+
+  // Fungsi untuk mengekstrak data pasien dari HTML
+  const extractPasienFromHtml = (htmlString) => {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(htmlString, 'text/html');
     
-    fetchData();
+    const pasienCards = doc.querySelectorAll('.card.pasien-ada, .card.pasien-tidak');
+    const pasienList = [];
     
-    // Refresh data setiap 30 detik
-    const intervalId = setInterval(fetchData, 30000);
+    pasienCards.forEach(card => {
+      const namaPasien = card.querySelector('.card-title')?.textContent.trim();
+      const infoElements = card.querySelectorAll('.card-text strong');
+      
+      let noReg = '';
+      let noRawat = '';
+      let dokter = '';
+      let nmPoli = '';
+      let penjamin = '';
+      
+      infoElements.forEach(element => {
+        const label = element.textContent.trim();
+        const value = element.nextSibling?.textContent.trim().replace(':', '').trim();
+        
+        if (label.includes('No. Registrasi')) noReg = value;
+        if (label.includes('No. Rawat')) noRawat = value;
+        if (label.includes('Dokter')) dokter = value;
+        if (label.includes('Poli')) nmPoli = value;
+        if (label.includes('Penjamin')) penjamin = value;
+      });
+      
+      // Coba dapatkan data dari button onclick handler untuk kd_dokter
+      const adaButton = card.querySelector('.btn-ada');
+      let kdDokter = '';
+      let status = card.classList.contains('pasien-ada') ? '0' : 
+                   card.classList.contains('pasien-tidak') ? '1' : '';
+      
+      if (adaButton) {
+        const onclickAttr = adaButton.getAttribute('onclick');
+        const matches = onclickAttr.match(/handleLog\('([^']+)', '([^']+)', '([^']+)', '[^']+'\)/);
+        if (matches && matches.length >= 4) {
+          kdDokter = matches[1];
+        }
+      }
+      
+      pasienList.push({
+        nm_pasien: namaPasien,
+        no_reg: noReg,
+        no_rawat: noRawat,
+        nama_dokter: dokter,
+        kd_dokter: kdDokter,
+        nm_poli: nmPoli,
+        png_jawab: penjamin,
+        status: status
+      });
+    });
     
-    return () => {
-      clearInterval(intervalId);
-    };
-  }, [kdPoli]);
-  
+    return pasienList;
+  };
+
   // Fungsi untuk memanggil pasien
-  const callPatient = async (pasien) => {
+  const panggilPasien = async (nmPasien, kdRuangPoli, nmPoli, noReg) => {
     try {
-      setCallStatus('calling');
-      setSelectedPasien(pasien);
-      
-      // Kirim permintaan ke API untuk memperbarui status panggilan
-      await axios.post(`/api/poli/${kdPoli}/panggil`, {
-        no_reg: pasien.no_reg,
-        kd_ruang_poli: kdPoli
+      console.log('Memanggil pasien dengan data:', {
+        nm_pasien: nmPasien,
+        kd_ruang_poli: kdRuangPoli,
+        nm_poli: nmPoli,
+        no_reg: noReg,
+        kd_display: 'DISPLAY1'
       });
+
+      // Redirect langsung ke UI server untuk memanggil fungsi panggilPasien
+      window.open(`http://localhost:8080/panggilpoli/${kdRuangPoli}/DISPLAY1?action=panggil&nm_pasien=${encodeURIComponent(nmPasien)}&no_reg=${encodeURIComponent(noReg)}`, '_blank');
       
-      setCallStatus('success');
-      
-      // Reset status setelah 5 detik
-      setTimeout(() => {
-        setCallStatus('idle');
-        setSelectedPasien(null);
-      }, 5000);
-      
-      // Refresh data antrian
-      const antrianResponse = await axios.get(`/api/poli/${kdPoli}/antrian`);
-      setAntrian(antrianResponse.data);
+      alert('Pasien dipanggil: ' + nmPasien);
     } catch (error) {
-      console.error('Error calling patient:', error);
-      setCallStatus('error');
-      
-      // Reset status setelah 3 detik
-      setTimeout(() => {
-        setCallStatus('idle');
-      }, 3000);
+      console.error('Error saat memanggil pasien:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      });
+      alert('Terjadi kesalahan saat memanggil pasien');
     }
   };
-  
-  // Fungsi untuk menandai pasien sudah diperiksa
-  const markAsExamined = async (pasien) => {
+
+  // Fungsi untuk menangani log pasien (ada/tidak)
+  const handleLog = async (kdDokter, noRawat, kdRuangPoli, type) => {
     try {
-      await axios.post(`/api/poli/${kdPoli}/selesai`, {
-        no_reg: pasien.no_reg
+      console.log('Mengupdate log pasien:', {
+        kd_dokter: kdDokter,
+        no_rawat: noRawat,
+        kd_ruang_poli: kdRuangPoli,
+        type: type
       });
+
+      // Redirect langsung ke UI server untuk memanggil fungsi handleLog
+      window.open(`http://localhost:8080/panggilpoli/${kdRuangPoli}/DISPLAY1?action=log&kd_dokter=${encodeURIComponent(kdDokter)}&no_rawat=${encodeURIComponent(noRawat)}&type=${encodeURIComponent(type)}`, '_blank');
       
-      // Refresh data antrian
-      const antrianResponse = await axios.get(`/api/poli/${kdPoli}/antrian`);
-      setAntrian(antrianResponse.data);
+      alert('Status pasien diupdate: ' + (type === 'ada' ? 'Hadir' : 'Tidak Hadir'));
+      window.location.reload();
     } catch (error) {
-      console.error('Error marking patient as examined:', error);
-      alert('Gagal menandai pasien sebagai sudah diperiksa');
+      console.error('Error saat update log:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      });
+      alert('Terjadi kesalahan saat mengupdate status pasien');
     }
   };
-  
+
+  // Fungsi untuk reset log pasien
+  const resetLog = async (noRawat) => {
+    try {
+      console.log('Reset log untuk no_rawat:', noRawat);
+      
+      // Redirect langsung ke UI server untuk memanggil fungsi resetLog
+      window.open(`http://localhost:8080/panggilpoli/${kd_ruang_poli}/DISPLAY1?action=reset&no_rawat=${encodeURIComponent(noRawat)}`, '_blank');
+      
+      alert('Status pasien di-reset');
+      window.location.reload();
+    } catch (error) {
+      console.error('Error saat reset log:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      });
+      alert('Terjadi kesalahan saat mereset status pasien');
+    }
+  };
+
+  // Jika ingin menampilkan HTML asli dari server
+  const showServerPage = () => {
+    window.open(`http://localhost:8080/panggilpoli/${kd_ruang_poli}/DISPLAY1`, '_blank');
+  };
+
   if (error) {
     return (
       <div className="flex items-center justify-center h-screen bg-red-50">
@@ -105,169 +215,124 @@ const PanggilPasien = () => {
           >
             Coba Lagi
           </button>
+          <button 
+            className="ml-2 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+            onClick={showServerPage}
+          >
+            Buka Halaman Server
+          </button>
         </div>
       </div>
     );
   }
-  
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-gray-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-primary-600 mx-auto"></div>
-          <p className="mt-4 text-primary-700 font-medium">Memuat Data...</p>
-        </div>
-      </div>
-    );
-  }
-  
+
   return (
-    <div ref={containerRef} className="min-h-screen bg-gray-100">
-      <Header />
-      
+    <div className="min-h-screen bg-gray-100">
       <div className="container mx-auto px-4 py-6">
-        {/* Informasi Poli */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <div className="flex justify-between items-center mb-4">
-            <h1 className="text-2xl font-bold text-gray-800">
-              {poliData?.nm_poli || 'Poli'}
-            </h1>
-            <div className="text-sm bg-blue-100 text-blue-800 px-3 py-1 rounded-full">
-              {poliData?.kd_poli || kdPoli}
-            </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="text-gray-600">
-              <p><i className="fas fa-user-md mr-2"></i>Dokter: <span className="font-semibold">{poliData?.nama_dokter || 'Belum ditentukan'}</span></p>
-              <p><i className="far fa-clock mr-2"></i>Jam Praktek: <span className="font-semibold">{poliData?.jam_mulai || '00:00'} - {poliData?.jam_selesai || '00:00'}</span></p>
-            </div>
-            <div className="text-gray-600">
-              <p><i className="fas fa-users mr-2"></i>Jumlah Antrian: <span className="font-semibold">{antrian.length || 0}</span></p>
-              <p><i className="fas fa-check-circle mr-2"></i>Status: <span className="font-semibold text-green-600">Aktif</span></p>
-            </div>
-          </div>
+        {/* Header */}
+        <div className="bg-blue-600 text-white text-center p-4 rounded-lg mb-6">
+          <h2 className="text-2xl font-bold">Panggil Pasien Poli</h2>
+          <h4 className="text-lg mt-2">
+            {currentTime.toLocaleDateString('id-ID', {
+              weekday: 'long',
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit'
+            })}
+          </h4>
         </div>
-        
-        {/* Panel Pemanggilan */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <h2 className="text-xl font-bold text-gray-800 mb-4">Pasien Saat Ini</h2>
-          
-          {selectedPasien ? (
-            <div className="border border-green-200 bg-green-50 rounded-lg p-4 mb-4">
-              <div className="flex justify-between items-center">
-                <div>
-                  <p className="text-lg font-semibold">{selectedPasien.nm_pasien}</p>
-                  <p className="text-gray-600">No. Registrasi: {selectedPasien.no_reg}</p>
-                  <p className="text-gray-600">No. RM: {selectedPasien.no_rm}</p>
-                </div>
-                <div>
-                  {callStatus === 'calling' && (
-                    <div className="animate-pulse">
-                      <i className="fas fa-volume-up text-3xl text-yellow-500"></i>
-                      <p className="text-sm text-yellow-600">Memanggil...</p>
-                    </div>
-                  )}
-                  {callStatus === 'success' && (
-                    <div>
-                      <i className="fas fa-check-circle text-3xl text-green-500"></i>
-                      <p className="text-sm text-green-600">Terpanggil</p>
-                    </div>
-                  )}
-                  {callStatus === 'error' && (
-                    <div>
-                      <i className="fas fa-exclamation-circle text-3xl text-red-500"></i>
-                      <p className="text-sm text-red-600">Gagal</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-              <div className="mt-4 flex justify-end space-x-2">
-                <button 
-                  className="bg-blue-500 hover:bg-blue-700 text-white py-2 px-4 rounded"
-                  onClick={() => callPatient(selectedPasien)}
-                  disabled={callStatus === 'calling'}
-                >
-                  <i className="fas fa-volume-up mr-2"></i>
-                  Panggil Ulang
-                </button>
-                <button 
-                  className="bg-green-500 hover:bg-green-700 text-white py-2 px-4 rounded"
-                  onClick={() => markAsExamined(selectedPasien)}
-                >
-                  <i className="fas fa-check mr-2"></i>
-                  Selesai Diperiksa
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="border border-gray-200 bg-gray-50 rounded-lg p-6 text-center">
-              <i className="far fa-bell-slash text-4xl text-gray-400 mb-2"></i>
-              <p className="text-gray-500">Belum ada pasien yang dipanggil</p>
-            </div>
-          )}
+
+        {/* Tombol Kembali */}
+        <div className="mb-6 flex justify-between">
+          <Link to="/settings/poli" className="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700">
+            <i className="fas fa-arrow-left mr-2"></i>
+            Kembali ke Pengaturan
+          </Link>
+          <button 
+            className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+            onClick={showServerPage}
+          >
+            <i className="fas fa-external-link-alt mr-2"></i>
+            Buka Halaman Server
+          </button>
         </div>
-        
+
         {/* Daftar Antrian */}
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-xl font-bold text-gray-800 mb-4">Daftar Antrian</h2>
-          
-          {antrian.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="min-w-full bg-white">
-                <thead className="bg-gray-100">
-                  <tr>
-                    <th className="py-3 px-4 text-left text-sm font-semibold text-gray-700">No</th>
-                    <th className="py-3 px-4 text-left text-sm font-semibold text-gray-700">No. RM</th>
-                    <th className="py-3 px-4 text-left text-sm font-semibold text-gray-700">Nama Pasien</th>
-                    <th className="py-3 px-4 text-left text-sm font-semibold text-gray-700">Status</th>
-                    <th className="py-3 px-4 text-left text-sm font-semibold text-gray-700">Aksi</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {antrian.map((pasien, index) => (
-                    <tr key={pasien.no_reg} className={pasien.status === 'dipanggil' ? 'bg-yellow-50' : ''}>
-                      <td className="py-3 px-4 text-sm">{index + 1}</td>
-                      <td className="py-3 px-4 text-sm">{pasien.no_rm}</td>
-                      <td className="py-3 px-4 text-sm">{pasien.nm_pasien}</td>
-                      <td className="py-3 px-4 text-sm">
-                        {pasien.status === 'menunggu' && <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">Menunggu</span>}
-                        {pasien.status === 'dipanggil' && <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs">Dipanggil</span>}
-                        {pasien.status === 'diperiksa' && <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">Diperiksa</span>}
-                        {pasien.status === 'selesai' && <span className="bg-gray-100 text-gray-800 px-2 py-1 rounded-full text-xs">Selesai</span>}
-                      </td>
-                      <td className="py-3 px-4 text-sm">
-                        <button 
-                          className="bg-blue-500 hover:bg-blue-700 text-white py-1 px-3 rounded mr-2"
-                          onClick={() => callPatient(pasien)}
-                          disabled={pasien.status === 'dipanggil' || pasien.status === 'diperiksa' || pasien.status === 'selesai'}
-                        >
-                          <i className="fas fa-volume-up mr-1"></i>
-                          Panggil
-                        </button>
-                        <button 
-                          className="bg-green-500 hover:bg-green-700 text-white py-1 px-3 rounded"
-                          onClick={() => markAsExamined(pasien)}
-                          disabled={pasien.status === 'menunggu' || pasien.status === 'selesai'}
-                        >
-                          <i className="fas fa-check mr-1"></i>
-                          Selesai
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+        <div className="space-y-4">
+          {isLoading ? (
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-blue-600 mx-auto"></div>
+              <p className="mt-4 text-gray-600">Memuat Data...</p>
             </div>
+          ) : antrian.length > 0 ? (
+            antrian.map((pasien, index) => (
+              <div 
+                key={pasien.no_rawat || index} 
+                className={`bg-white rounded-lg shadow-md p-6 ${
+                  pasien.status === '0' ? 'bg-green-50' : pasien.status === '1' ? 'bg-red-50' : ''
+                }`}
+              >
+                <div className="flex flex-col md:flex-row justify-between">
+                  <div className="mb-4 md:mb-0">
+                    <h5 className="text-xl font-semibold mb-2">{pasien.nm_pasien}</h5>
+                    <div className="text-gray-600">
+                      <p><strong>No. Registrasi:</strong> {pasien.no_reg}</p>
+                      <p><strong>No. Rawat:</strong> {pasien.no_rawat}</p>
+                      <p><strong>Dokter:</strong> {pasien.nama_dokter}</p>
+                      <p><strong>Poli:</strong> {pasien.nm_poli}</p>
+                      <p><strong>Penjamin:</strong> {pasien.png_jawab}</p>
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-end space-y-2">
+                    <button
+                      className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+                      onClick={() => panggilPasien(
+                        pasien.nm_pasien,
+                        kd_ruang_poli,
+                        pasien.nm_poli,
+                        pasien.no_reg
+                      )}
+                    >
+                      <i className="fas fa-volume-up mr-2"></i>
+                      Panggil
+                    </button>
+                    <div className="space-x-2">
+                      <button
+                        className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600"
+                        onClick={() => handleLog(pasien.kd_dokter, pasien.no_rawat, kd_ruang_poli, 'ada')}
+                      >
+                        <i className="fas fa-check mr-1"></i>
+                        Ada
+                      </button>
+                      <button
+                        className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
+                        onClick={() => handleLog(pasien.kd_dokter, pasien.no_rawat, kd_ruang_poli, 'tidak')}
+                      >
+                        <i className="fas fa-times mr-1"></i>
+                        Tidak
+                      </button>
+                      <button
+                        className="bg-yellow-500 text-white px-3 py-1 rounded hover:bg-yellow-600"
+                        onClick={() => resetLog(pasien.no_rawat)}
+                      >
+                        <i className="fas fa-redo mr-1"></i>
+                        Reset
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))
           ) : (
-            <div className="text-center py-4">
-              <i className="far fa-clipboard text-4xl text-gray-300 mb-2"></i>
+            <div className="bg-white rounded-lg shadow-md p-6 text-center">
               <p className="text-gray-500">Tidak ada pasien dalam antrian</p>
             </div>
           )}
         </div>
       </div>
-      
-      <Footer />
     </div>
   );
 };

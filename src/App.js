@@ -10,7 +10,7 @@ function App() {
       <Routes>
         <Route path="/" element={<PengaturanPoli />} />
         <Route path="/display/:kdDisplay" element={<DisplayPoli />} />
-        <Route path="/panggil/:kdPoli" element={<PanggilPasien />} />
+        <Route path="/panggil/:kd_ruang_poli" element={<PanggilPasien />} />
         <Route path="*" element={<div className="flex items-center justify-center h-screen">
           <div className="text-center">
             <h1 className="text-2xl font-bold text-gray-800 mb-4">Display Poli - Rumah Sakit Bumi Waras</h1>
@@ -19,7 +19,7 @@ function App() {
               <p className="text-green-800 font-medium">/display/[kode_display]</p>
             </div>
             <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 inline-block">
-              <p className="text-blue-800 font-medium">/panggil/[kode_poli]</p>
+              <p className="text-blue-800 font-medium">/panggil/[kode_ruang_poli]</p>
             </div>
           </div>
         </div>} />

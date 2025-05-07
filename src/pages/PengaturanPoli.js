@@ -130,7 +130,7 @@ const PengaturanPoli = () => {
                                                className="inline-flex items-center px-3 py-1 bg-green-50 hover:bg-green-100 text-green-700 rounded-md text-xs transition-all duration-300 border border-green-200">
                                                 <FontAwesomeIcon icon={faDesktop} className="mr-1" /> Display
                                             </a>
-                                            <a href={`/panggilpoli/${poli.kd_ruang_poli}/${poli.kd_display}`} target="_blank" rel="noopener noreferrer"
+                                            <a href={`http://localhost:8080/panggilpoli/${poli.kd_ruang_poli}/DISPLAY1`} target="_blank" rel="noopener noreferrer"
                                                className="inline-flex items-center px-3 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-md text-xs transition-all duration-300 border border-blue-200">
                                                 <FontAwesomeIcon icon={faBullhorn} className="mr-1" /> Panggil
                                             </a>
