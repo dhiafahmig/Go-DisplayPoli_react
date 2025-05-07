@@ -1,15 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { 
-  faArrowLeft, 
-  faRedo,
-  faExclamationTriangle,
-  faBell,
-  faUserCheck,
-  faUserTimes,
-  faUser
-} from '@fortawesome/free-solid-svg-icons';
+import { faArrowLeft, faRedo } from '@fortawesome/free-solid-svg-icons';
+import PanggilPasienCard from '../components/PanggilPasienCard';
 
 const PanggilPasien = () => {
   const { kd_ruang_poli } = useParams();
@@ -225,91 +218,68 @@ const PanggilPasien = () => {
     }
   };
 
-  if (error) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-red-50">
-        <div className="text-center p-8 bg-white rounded-lg shadow-lg max-w-md">
-          <FontAwesomeIcon icon={faExclamationTriangle} className="text-red-500 text-4xl mb-4" />
-          <h2 className="text-xl font-bold text-gray-800 mb-2">Terjadi Kesalahan</h2>
-          <p className="text-red-700 font-medium mb-6">{error}</p>
-          <div className="flex justify-center space-x-3">
-            <button 
-              className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors duration-300 flex items-center"
-              onClick={() => fetchData()}
-            >
-              <FontAwesomeIcon icon={faRedo} className="mr-2" />
-              Coba Lagi
-            </button>
-            <Link 
-              to="/"
-              className="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 transition-colors duration-300 flex items-center"
-            >
-              <FontAwesomeIcon icon={faArrowLeft} className="mr-2" />
-              Kembali
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const formatDateTime = (date) => {
+    return date.toLocaleDateString('id-ID', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    });
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-      <div className="container mx-auto px-4 py-6">
-        {/* Header */}
-        <div className="bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl shadow-lg mb-6 overflow-hidden">
-          <div className="p-6">
-            <div className="flex flex-col md:flex-row justify-between items-center mb-4">
+      {/* Header */}
+      <div className="bg-[#16a34a] text-white shadow-lg py-6 sticky top-0 z-50">
+        <div className="container mx-auto px-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <Link to="/pengaturan" className="mr-4">
+                <FontAwesomeIcon icon={faArrowLeft} className="text-2xl hover:text-green-200 transition-colors" />
+              </Link>
               <div>
-                <h2 className="text-3xl font-bold">Panggil Pasien</h2>
-                <h3 className="text-xl font-medium text-green-100 mt-1">
-                  {poliInfo ? poliInfo.nama_ruang_poli : `Poli ${kd_ruang_poli}`}
-                </h3>
+                <h1 className="text-2xl font-bold">Panggil Pasien</h1>
+                <p className="text-green-200">Poli {poliInfo?.nama_ruang_poli || kd_ruang_poli}</p>
               </div>
-              <div className="text-right mt-4 md:mt-0">
-                <div className="text-xl font-medium">
-                  {currentTime.toLocaleDateString('id-ID', {
-                    weekday: 'long',
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                  })}
-                </div>
-                <div className="text-2xl font-bold mt-1">
-                  {currentTime.toLocaleTimeString('id-ID', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    second: '2-digit'
-                  })}
-                </div>
+            </div>
+            <div className="flex items-center space-x-4">
+              <div className="bg-green-700/30 px-5 py-2 rounded-full border border-green-400/30 backdrop-blur-sm">
+                <span className="text-lg">{formatDateTime(currentTime)}</span>
               </div>
+              <button
+                onClick={fetchData}
+                className="bg-green-700 hover:bg-green-800 text-white px-4 py-2 rounded-lg transition-colors flex items-center"
+              >
+                <FontAwesomeIcon icon={faRedo} className="mr-2" />
+                Refresh
+              </button>
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Tombol Navigasi */}
-        <div className="mb-6 flex flex-wrap gap-3 justify-between">
-          <Link to="/" className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors duration-300 flex items-center shadow-md">
-            <FontAwesomeIcon icon={faArrowLeft} className="mr-2" />
-            Kembali ke Pengaturan
-          </Link>
-          <button 
-            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors duration-300 flex items-center shadow-md"
-            onClick={fetchData}
-          >
-            <FontAwesomeIcon icon={faRedo} className="mr-2" />
-            Refresh Data
-          </button>
-        </div>
-
-        {/* Daftar Pasien */}
-        <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-          {isLoading ? (
-            <div className="text-center py-12">
-              <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-green-600 mx-auto"></div>
-              <p className="mt-6 text-gray-600 font-medium">Memuat Data Pasien...</p>
-            </div>
-          ) : (
+      {/* Main Content */}
+      <div className="container mx-auto px-6 py-8">
+        {isLoading ? (
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-green-500 mx-auto mb-4"></div>
+            <p className="text-gray-600">Memuat data pasien...</p>
+          </div>
+        ) : error ? (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+            <p className="text-red-600 font-medium mb-4">{error}</p>
+            <button
+              onClick={fetchData}
+              className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
+            >
+              Coba Lagi
+            </button>
+          </div>
+        ) : (
+          <div className="bg-white rounded-xl shadow-lg overflow-hidden">
             <div className="overflow-x-auto">
               <table className="min-w-full bg-white">
                 <thead className="bg-green-600 text-white">
@@ -325,58 +295,15 @@ const PanggilPasien = () => {
                 <tbody className="divide-y divide-gray-200">
                   {pasienList.length > 0 ? (
                     pasienList.map((pasien, index) => (
-                      <tr key={pasien.no_rawat || index} className={`${pasien.status === '0' ? 'bg-green-50' : pasien.status === '1' ? 'bg-red-50' : ''}`}>
-                        <td className="py-3 px-4">{index + 1}</td>
-                        <td className="py-3 px-4 font-medium">{pasien.no_reg}</td>
-                        <td className="py-3 px-4">{pasien.nm_pasien}</td>
-                        <td className="py-3 px-4">{pasien.nama_dokter}</td>
-                        <td className="py-3 px-4">
-                          {pasien.status === '0' ? (
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                              <FontAwesomeIcon icon={faUserCheck} className="mr-1" /> Hadir
-                            </span>
-                          ) : pasien.status === '1' ? (
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                              <FontAwesomeIcon icon={faUserTimes} className="mr-1" /> Tidak Hadir
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                              <FontAwesomeIcon icon={faUser} className="mr-1" /> Menunggu
-                            </span>
-                          )}
-                        </td>
-                        <td className="py-2 px-4">
-                          <div className="flex justify-center space-x-2">
-                            <button 
-                              className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded"
-                              onClick={() => handlePanggilPasien(pasien)}
-                              disabled={isCallingPatient}
-                            >
-                              <FontAwesomeIcon icon={faBell} /> Panggil
-                            </button>
-                            <button 
-                              className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded"
-                              onClick={() => handleUpdateStatus(pasien, '0')}
-                            >
-                              <FontAwesomeIcon icon={faUserCheck} /> Hadir
-                            </button>
-                            <button 
-                              className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded"
-                              onClick={() => handleUpdateStatus(pasien, '1')}
-                            >
-                              <FontAwesomeIcon icon={faUserTimes} /> Tidak
-                            </button>
-                            {(pasien.status === '0' || pasien.status === '1') && (
-                              <button 
-                                className="bg-gray-500 hover:bg-gray-600 text-white px-3 py-1 rounded"
-                                onClick={() => handleResetStatus(pasien)}
-                              >
-                                <FontAwesomeIcon icon={faRedo} /> Reset
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
+                      <PanggilPasienCard
+                        key={pasien.no_rawat}
+                        pasien={pasien}
+                        index={index}
+                        onPanggil={handlePanggilPasien}
+                        onUpdateStatus={handleUpdateStatus}
+                        onResetStatus={handleResetStatus}
+                        isCalling={isCallingPatient}
+                      />
                     ))
                   ) : (
                     <tr>
@@ -388,19 +315,9 @@ const PanggilPasien = () => {
                 </tbody>
               </table>
             </div>
-          )}
-        </div>
-      </div>
-      
-      {/* Footer */}
-      <footer className="mt-12 bg-white py-4 border-t border-gray-200">
-        <div className="container mx-auto px-4">
-          <div className="text-center text-gray-600 text-sm">
-            <p>&copy; 2025 Rumah Sakit Bumi Waras - Sistem Manajemen Antrian Poli</p>
-            <p className="mt-1 text-gray-400">Versi 1.0.0 - Dikembangkan oleh Dhia Fahmi G</p>
           </div>
-        </div>
-      </footer>
+        )}
+      </div>
     </div>
   );
 };
