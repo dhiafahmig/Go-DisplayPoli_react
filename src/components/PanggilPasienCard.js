@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
   faBell, 
@@ -10,71 +10,167 @@ import {
 
 const PanggilPasienCard = ({ pasien, onPanggil, onUpdateStatus, onResetStatus, isCalling, index }) => {
   const audioRef = useRef(null);
+  const [availableVoices, setAvailableVoices] = useState([]);
 
   useEffect(() => {
     // Inisialisasi audio
     audioRef.current = new Audio();
+    
+    // Inisialisasi dan perbarui daftar suara
+    const updateVoices = () => {
+      if ('speechSynthesis' in window) {
+        const voices = window.speechSynthesis.getVoices();
+        setAvailableVoices(voices);
+      }
+    };
+    
+    // Panggil sekali di awal
+    updateVoices();
+    
+    // Dengarkan event voiceschanged
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.onvoiceschanged = updateVoices;
+    }
+    
+    return () => {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.onvoiceschanged = null;
+      }
+    };
   }, []);
+
+  // Fungsi helper untuk mendapatkan suara Bahasa Indonesia terbaik
+  const getBestIndonesianVoice = () => {
+    if (!availableVoices.length) return null;
+    
+    // Prioritas suara:
+    // 1. Google Indonesia
+    // 2. Microsoft Indonesia
+    // 3. Suara Indonesia lainnya
+    // 4. Default Google
+    
+    // Cari Google Indonesia
+    const googleIndonesianVoice = availableVoices.find(
+      voice => voice.name.includes('Google') && voice.lang.includes('id-ID')
+    );
+    if (googleIndonesianVoice) return googleIndonesianVoice;
+    
+    // Cari Microsoft Indonesia
+    const microsoftIndonesianVoice = availableVoices.find(
+      voice => voice.name.includes('Microsoft') && voice.lang.includes('id-ID')
+    );
+    if (microsoftIndonesianVoice) return microsoftIndonesianVoice;
+    
+    // Cari suara Indonesia lainnya
+    const anyIndonesianVoice = availableVoices.find(
+      voice => voice.lang.includes('id-ID')
+    );
+    if (anyIndonesianVoice) return anyIndonesianVoice;
+    
+    // Jika tidak ada, gunakan suara Google default
+    const googleDefaultVoice = availableVoices.find(
+      voice => voice.name.includes('Google')
+    );
+    if (googleDefaultVoice) return googleDefaultVoice;
+    
+    // Jika masih tidak ada, gunakan suara pertama
+    return availableVoices[0];
+  };
+
+  // Fungsi helper untuk speech synthesis
+  const speakText = (text) => {
+    return new Promise((resolve) => {
+      // Periksa apakah browser mendukung Speech Synthesis
+      if ('speechSynthesis' in window) {
+        // Hentikan semua suara yang sedang berbicara
+        window.speechSynthesis.cancel();
+        
+        // Buat utterance baru
+        const utterance = new SpeechSynthesisUtterance(text);
+        
+        // Pilih suara terbaik
+        const bestVoice = getBestIndonesianVoice();
+        if (bestVoice) {
+          utterance.voice = bestVoice;
+        }
+        
+        // Pengaturan suara Indonesia
+        utterance.lang = 'id-ID';
+        
+        // Atur volume dan kecepatan untuk mirip Google Translate
+        utterance.volume = 1.0;   // Volume maksimum
+        utterance.rate = 0.9;     // Sedikit lebih lambat dari normal
+        utterance.pitch = 1.0;    // Pitch normal
+        
+        // Handler untuk event end
+        utterance.onend = () => {
+          resolve();
+        };
+        
+        // Handler untuk error
+        utterance.onerror = (err) => {
+          console.error('SpeechSynthesis Error:', err);
+          resolve();
+        };
+        
+        // Log info suara yang digunakan (untuk debugging)
+        console.log(`Menggunakan suara: ${utterance.voice ? utterance.voice.name : 'default'}`);
+        
+        // Mainkan suara
+        window.speechSynthesis.speak(utterance);
+      } else {
+        console.log('Browser tidak mendukung Speech Synthesis');
+        resolve();
+      }
+    });
+  };
 
   const playNotificationSound = async () => {
     try {
-      // Mainkan suara beep
-      const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
-      audio.volume = 0.5;
+      // Panggil endpoint PanggilPasienAPI dari backend Go
+      const response = await fetch(`/api/antrian/panggil`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          nm_pasien: pasien.nm_pasien,
+          kd_ruang_poli: pasien.kd_ruang_poli,
+          nm_poli: pasien.nm_poli || 'poli',
+          no_reg: pasien.no_reg,
+          kd_display: '1', // Default display
+          no_rawat: pasien.no_rawat
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Gagal memanggil pasien');
+      }
+
+      const result = await response.json();
       
-      // Mainkan suara
-      const playPromise = audio.play();
-      
-      if (playPromise !== undefined) {
-        await playPromise;
-        
-        // Setelah beep selesai, mulai pengumuman
-        setTimeout(async () => {
-          try {
-            // Panggil endpoint Golang untuk text-to-speech
-            const response = await fetch('/api/tts', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                text: `Nomor antrian ${pasien.no_reg}, ${pasien.nm_pasien}, silahkan menuju ke ruang poli`,
-                lang: 'id-ID'
-              })
-            });
-
-            if (!response.ok) {
-              throw new Error('Gagal mendapatkan audio dari server');
-            }
-
-            // Dapatkan blob audio
-            const audioBlob = await response.blob();
-            const audioUrl = URL.createObjectURL(audioBlob);
-
-            // Mainkan audio
-            const announcementAudio = new Audio(audioUrl);
-            announcementAudio.volume = 0.7;
-            
-            await announcementAudio.play();
-
-            // Setelah pengumuman selesai, mainkan beep kedua
-            setTimeout(() => {
-              const audio2 = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
-              audio2.volume = 0.5;
-              audio2.play();
-            }, 2000);
-
-          } catch (error) {
-            console.error('Error playing announcement:', error);
-            // Jika gagal, mainkan beep kedua saja
-            const audio2 = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
-            audio2.volume = 0.5;
-            audio2.play();
-          }
-        }, 1000);
+      if (result.status === 'success') {
+        // Coba putar audio dari server jika ada audio_url
+        if (result.data.message.audio_url) {
+          const announcementAudio = new Audio(result.data.message.audio_url);
+          announcementAudio.volume = 0.8;
+          await announcementAudio.play();
+        } else {
+          // Jika tidak ada audio_url, gunakan browser speech synthesis
+          const message = `Nomor antrian ${pasien.no_reg}, atas nama ${pasien.nm_pasien}, silakan menuju ke ruang poli ${pasien.kd_ruang_poli || 'poli'}`;
+          await speakText(message);
+        }
+      } else {
+        // Jika respon dari server tidak sukses, gunakan speech synthesis
+        const message = `Nomor antrian ${pasien.no_reg}, atas nama ${pasien.nm_pasien}, silakan menuju ke ruang poli ${pasien.kd_ruang_poli || 'poli'}`;
+        await speakText(message);
       }
     } catch (error) {
-      console.error('Error playing notification sound:', error);
+      console.error('Error memanggil pasien:', error);
+      
+      // Jika terjadi error saat memanggil API, gunakan speech synthesis
+      const message = `Nomor antrian ${pasien.no_reg}, atas nama ${pasien.nm_pasien}, silakan menuju ke ruang poli ${pasien.kd_ruang_poli || 'poli'}`;
+      await speakText(message);
     }
   };
 
@@ -83,10 +179,10 @@ const PanggilPasienCard = ({ pasien, onPanggil, onUpdateStatus, onResetStatus, i
       // Mainkan suara notifikasi
       await playNotificationSound();
       
-      // Panggil pasien
+      // Panggil pasien (update UI jika diperlukan)
       await onPanggil(pasien);
     } catch (error) {
-      console.error('Error in handlePanggil:', error);
+      console.error('Error dalam handlePanggil:', error);
       // Jika gagal memainkan suara, tetap panggil pasien
       await onPanggil(pasien);
     }
