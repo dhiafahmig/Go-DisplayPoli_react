@@ -71,7 +71,7 @@ const PanggilPasien = () => {
   };
 
   // Panggil pasien
-  const handlePanggilPasien = async (pasien) => {
+  const handlePanggilPasien = async (pasien, silentMode = false) => {
     try {
       setIsCallingPatient(true);
       
@@ -96,8 +96,10 @@ const PanggilPasien = () => {
       const data = await response.json();
       
       if (data.status === 'success') {
-        // Feedback visual sukses
-        alert(`Pasien ${pasien.nm_pasien} berhasil dipanggil!`);
+        // Feedback visual sukses hanya jika tidak dalam mode silent
+        if (!silentMode) {
+          alert(`Pasien ${pasien.nm_pasien} berhasil dipanggil!`);
+        }
       } else {
         // Coba dengan endpoint lama jika fail
         const oldApiResponse = await fetch('/api/panggilpoli', {
@@ -117,7 +119,9 @@ const PanggilPasien = () => {
         if (oldApiResponse.ok) {
           const oldData = await oldApiResponse.json();
           if (oldData.success) {
-            alert(`Pasien ${pasien.nm_pasien} berhasil dipanggil!`);
+            if (!silentMode) {
+              alert(`Pasien ${pasien.nm_pasien} berhasil dipanggil!`);
+            }
             return;
           }
         }
@@ -126,7 +130,9 @@ const PanggilPasien = () => {
       }
     } catch (error) {
       console.error('Error calling patient:', error);
-      alert(`Gagal memanggil pasien: ${error.message}`);
+      if (!silentMode) {
+        alert(`Gagal memanggil pasien: ${error.message}`);
+      }
     } finally {
       setIsCallingPatient(false);
     }
