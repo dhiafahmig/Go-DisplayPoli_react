@@ -12,8 +12,10 @@ import {
   faCheck
 } from '@fortawesome/free-solid-svg-icons';
 
-// Impor file audio langsung
+// Impor file audio dan gambar langsung dari src/assets
 import bellSound from '../assets/notification.mp3';
+import rsIcon from '../assets/images/rs.ico';
+import rsImage from '../assets/images/rs.png';
 
 const PanggilPasienCard = ({ pasien, onPanggil, onUpdateStatus, onResetStatus, isCalling, index }) => {
   const audioRef = useRef(null);
