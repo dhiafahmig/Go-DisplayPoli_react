@@ -1,35 +1,59 @@
 import React, { useState, useEffect } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
-    faCog, 
     faListAlt, 
     faDesktop, 
     faBullhorn,
-    faSync
+    faSync,
+    faUserMd,
+    faCog
 } from '@fortawesome/free-solid-svg-icons';
-import { faCopyright } from '@fortawesome/free-regular-svg-icons';
 
-// Import gambar
-import rsLogo from '../assets/images/rs.png';
-import bpjsLogo from '../assets/images/bpjs.png';
+// Import komponen
+import Header from '../components/Header';
+import Footer from '../components/Footer';
+
+// Font Preloading
+const fontPreload = () => {
+    if (typeof window !== 'undefined' && 'fonts' in document) {
+        const fonts = [
+            'https://fonts.gstatic.com/s/inter/v12/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuLyfAZ9hiA.woff2',
+            'https://fonts.gstatic.com/s/inter/v12/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuGKYAZ9hiA.woff2'
+        ];
+        
+        fonts.forEach(fontUrl => {
+            const link = document.createElement('link');
+            link.href = fontUrl;
+            link.rel = 'preload';
+            link.as = 'font';
+            link.type = 'font/woff2';
+            link.crossOrigin = 'anonymous';
+            document.head.appendChild(link);
+        });
+    }
+};
 
 const PengaturanPoli = () => {
     const [polis, setPolis] = useState([]);
-    const [currentTime, setCurrentTime] = useState(new Date());
     const [isLoading, setIsLoading] = useState(true);
+    const [loadingDokter, setLoadingDokter] = useState(false);
     const [error, setError] = useState(null);
+    const [dokters, setDokters] = useState({});
 
     useEffect(() => {
-        // Update jam setiap detik
-        const timer = setInterval(() => {
-            setCurrentTime(new Date());
-        }, 1000);
-
+        // Preload font untuk mengurangi CLS
+        fontPreload();
+        
         // Load data poli
         loadPolis();
-
-        return () => clearInterval(timer);
     }, []);
+
+    // Effect untuk load dokter setelah polis berhasil diambil
+    useEffect(() => {
+        if (polis.length > 0) {
+            loadDokters();
+        }
+    }, [polis]);
 
     const loadPolis = async () => {
         try {
@@ -72,47 +96,68 @@ const PengaturanPoli = () => {
         }
     };
 
-    const formatDateTime = (date) => {
-        return date.toLocaleDateString('id-ID', {
-            weekday: 'long',
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit'
-        });
+    const loadDokters = async () => {
+        try {
+            // Set loading state
+            setLoadingDokter(true);
+            
+            // Inisialisasi objek untuk menyimpan dokter per poli
+            const dokterByPoli = {};
+            
+            // Ambil data dokter untuk setiap poli
+            for (const poli of polis) {
+                try {
+                    console.log(`Mengambil data dokter untuk poli: ${poli.kd_ruang_poli}`);
+                    const response = await fetch(`/api/poli/dokter/${poli.kd_ruang_poli}`);
+                    
+                    if (!response.ok) {
+                        console.error(`Error mengambil data dokter poli ${poli.kd_ruang_poli}: ${response.status}`);
+                        continue; // Lanjutkan ke poli berikutnya jika ada error
+                    }
+                    
+                    const data = await response.json();
+                    console.log(`Data dokter poli ${poli.kd_ruang_poli}:`, data);
+                    
+                    if (data.status === 'success' && data.data && data.data.dokters) {
+                        // Hapus duplikasi dokter dengan menggunakan Set dan kd_dokter sebagai kunci
+                        const uniqueDokters = {};
+                        data.data.dokters.forEach(dokter => {
+                            if (dokter.kd_dokter) {
+                                // Jika dokter belum ada di objek uniqueDokters, atau jika dokter ini memiliki nm_poli yang tidak null
+                                // (preferensi untuk menyimpan dokter dengan informasi spesialis)
+                                if (!uniqueDokters[dokter.kd_dokter] || dokter.nm_poli) {
+                                    uniqueDokters[dokter.kd_dokter] = dokter;
+                                }
+                            }
+                        });
+                        
+                        // Konversi kembali ke array
+                        dokterByPoli[poli.kd_ruang_poli] = Object.values(uniqueDokters).map(dokter => ({
+                            kd_dokter: dokter.kd_dokter || '-',
+                            nm_dokter: dokter.nama_dokter,
+                            spesialis: poli.nm_poli || 'Dokter Umum',
+                            jk: dokter.jk,
+                            nm_poli: dokter.nm_poli
+                        }));
+                    }
+                } catch (err) {
+                    console.error(`Error saat mengambil data dokter untuk poli ${poli.kd_ruang_poli}:`, err);
+                }
+            }
+            
+            console.log('Data dokter yang berhasil diambil:', dokterByPoli);
+            setDokters(dokterByPoli);
+        } catch (error) {
+            console.error('Error umum saat loading dokters:', error);
+        } finally {
+            setLoadingDokter(false);
+        }
     };
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 font-sans">
             {/* Header */}
-            <div className="bg-[#16a34a] text-white shadow-lg py-6 sticky top-0 z-50">
-                <div className="container mx-auto px-6">
-                    <div className="flex flex-col items-center justify-between md:flex-row">
-                        <div className="flex items-center mb-4 md:mb-0">
-                            <div className="flex items-center mr-5">
-                                <div className="bg-white p-3 rounded-lg shadow-md h-24 flex items-center mr-4">
-                                    <img src={rsLogo} alt="Bumi Waras Logo" className="h-20 w-auto" />
-                                </div>
-                                <FontAwesomeIcon icon={faCog} className="text-4xl mr-4 text-green-100" />
-                            </div>
-                            <div>
-                                <h1 className="text-3xl font-extrabold tracking-tight uppercase">PENGATURAN POLI</h1>
-                                <p className="text-green-200 text-sm mt-1 font-semibold">Rumah Sakit Bumi Waras</p>
-                            </div>
-                        </div>
-                        <div className="flex items-center">
-                            <div className="bg-green-700/30 px-5 py-2 rounded-full border border-green-400/30 backdrop-blur-sm mr-4 transition-all duration-500 hover:scale-105">
-                                <h3 className="text-xl font-light">{formatDateTime(currentTime)}</h3>
-                            </div>
-                            <div className="bg-white p-2 rounded-lg shadow-md h-20 flex items-center">
-                                <img src={bpjsLogo} alt="BPJS Logo" className="h-16 w-auto" />
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <Header title="PENGATURAN POLI" icon={faCog} />
 
             {/* Main Content */}
             <div className="container mx-auto px-6 py-10">
@@ -125,7 +170,10 @@ const PengaturanPoli = () => {
                             </div>
                             {!isLoading && (
                                 <button 
-                                    onClick={loadPolis} 
+                                    onClick={() => {
+                                        loadPolis();
+                                        loadDokters();
+                                    }} 
                                     className="bg-green-700 hover:bg-green-800 text-white text-sm px-3 py-1 rounded transition-colors duration-300 flex items-center"
                                 >
                                     <FontAwesomeIcon icon={faSync} className="mr-1" />
@@ -145,62 +193,104 @@ const PengaturanPoli = () => {
                                 <FontAwesomeIcon icon={faSync} className="text-red-500 text-4xl mb-4" />
                                 <p className="text-red-600 font-medium mb-4">{error}</p>
                                 <button 
-                                    onClick={loadPolis}
+                                    onClick={() => {
+                                        loadPolis();
+                                        loadDokters();
+                                    }}
                                     className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
                                 >
                                     Coba Lagi
                                 </button>
                             </div>
                         ) : (
-                            <table className="min-w-full divide-y divide-gray-200 rounded-lg">
-                                <thead className="bg-gray-50">
-                                    <tr>
-                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Ruang Poli</th>
-                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kode Display</th>
-                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Akses Cepat</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="bg-white divide-y divide-gray-200">
-                                    {polis.map((poli) => (
-                                        <tr key={poli.kd_ruang_poli} className="hover:bg-gray-50 transition-colors">
-                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                <p className="text-sm font-medium text-gray-800">Poli {poli.kd_ruang_poli}</p>
-                                                <p className="text-xs text-gray-500">{poli.nm_poli || '-'}</p>
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                <span className="bg-green-50 text-green-700 py-1 px-2 rounded-md text-xs font-medium border border-green-200">
-                                                    {poli.kd_display || 'DISPLAY1'}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                                                <a href={`/display/${poli.kd_display || 'DISPLAY1'}`} target="_blank" rel="noopener noreferrer" 
-                                                   className="inline-flex items-center px-3 py-1 bg-green-50 hover:bg-green-100 text-green-700 rounded-md text-xs transition-all duration-300 border border-green-200">
-                                                    <FontAwesomeIcon icon={faDesktop} className="mr-1" /> Display
-                                                </a>
-                                                <a href={`/panggil/${poli.kd_ruang_poli}`} target="_blank" rel="noopener noreferrer"
-                                                   className="inline-flex items-center px-3 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-md text-xs transition-all duration-300 border border-blue-200">
-                                                    <FontAwesomeIcon icon={faBullhorn} className="mr-1" /> Panggil
-                                                </a>
-                                            </td>
+                            <div className="relative overflow-x-auto max-h-[calc(100vh-300px)]">
+                                {/* Struktur placeholder untuk mengurangi CLS - sama seperti tabel aktual */}
+                                {loadingDokter && polis.length > 0 && (
+                                    <div aria-hidden="true" className="min-h-[400px]">
+                                        {/* Placeholder content yang menyerupai tabel sebenarnya */}
+                                    </div>
+                                )}
+                                
+                                <table className="min-w-full divide-y divide-gray-200 rounded-lg border-collapse border border-gray-200">
+                                    <thead className="bg-gray-50 sticky top-0 z-10">
+                                        <tr>
+                                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-r border-gray-200 bg-gray-50">Nama Ruang Poli</th>
+                                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-r border-gray-200 bg-gray-50">Dokter</th>
+                                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-r border-gray-200 bg-gray-50">Kode Display</th>
+                                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200 bg-gray-50">Akses Cepat</th>
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                                    </thead>
+                                    <tbody className="bg-white divide-y divide-gray-200">
+                                        {polis.map((poli) => (
+                                            <tr key={poli.kd_ruang_poli} className="hover:bg-gray-50 transition-colors">
+                                                <td className="px-6 py-4 whitespace-nowrap border-r border-gray-200">
+                                                    <p className="text-sm font-medium text-gray-800">Poli {poli.kd_ruang_poli}</p>
+                                                    <p className="text-xs text-gray-500">{poli.nm_poli || '-'}</p>
+                                                </td>
+                                                <td className="px-6 py-4 border-r border-gray-200 min-h-[80px]">
+                                                    {loadingDokter ? (
+                                                        <div className="text-center py-2">
+                                                            <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-green-500 mx-auto mb-2"></div>
+                                                            <p className="text-xs text-gray-500">Memuat data dokter...</p>
+                                                        </div>
+                                                    ) : dokters[poli.kd_ruang_poli] && dokters[poli.kd_ruang_poli].length > 0 ? (
+                                                        <div className="space-y-2 max-w-xs">
+                                                            {dokters[poli.kd_ruang_poli].map((dokter, index) => (
+                                                                <div key={index} className="flex items-start">
+                                                                    <FontAwesomeIcon icon={faUserMd} className="text-green-600 mt-1 mr-2 flex-shrink-0" />
+                                                                    <div className="flex-grow min-w-0">
+                                                                        <p className="text-sm font-medium text-gray-800 truncate">{dokter.nm_dokter}</p>
+                                                                        <div className="flex items-center flex-wrap gap-1">
+                                                                            {dokter.nm_poli ? (
+                                                                                <span className="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded-full text-xs font-medium">
+                                                                                    {dokter.nm_poli}
+                                                                                </span>
+                                                                            ) : (
+                                                                                <span className="text-xs text-gray-500">
+                                                                                    {dokter.spesialis || 'Dokter Umum'}
+                                                                                </span>
+                                                                            )}
+                                                                            {dokter.jk && (
+                                                                                <span className="bg-gray-50 text-gray-600 px-1.5 py-0.5 rounded-full text-xs">
+                                                                                    {dokter.jk === 'L' ? 'Laki-laki' : dokter.jk === 'P' ? 'Perempuan' : dokter.jk}
+                                                                                </span>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-xs text-gray-500 italic">Belum ada dokter terdaftar</span>
+                                                    )}
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 border-r border-gray-200">
+                                                    <span className="bg-green-50 text-green-700 py-1 px-2 rounded-md text-xs font-medium border border-green-200">
+                                                        {poli.kd_display || 'DISPLAY1'}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                                                    <a href={`/display/${poli.kd_display || 'DISPLAY1'}`} target="_blank" rel="noopener noreferrer" 
+                                                       className="inline-flex items-center px-3 py-1 bg-green-50 hover:bg-green-100 text-green-700 rounded-md text-xs transition-all duration-300 border border-green-200">
+                                                        <FontAwesomeIcon icon={faDesktop} className="mr-1" /> Display
+                                                    </a>
+                                                    <a href={`/panggil/${poli.kd_ruang_poli}`} target="_blank" rel="noopener noreferrer"
+                                                       className="inline-flex items-center px-3 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-md text-xs transition-all duration-300 border border-blue-200">
+                                                        <FontAwesomeIcon icon={faBullhorn} className="mr-1" /> Panggil
+                                                    </a>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
                         )}
                     </div>
                 </div>
             </div>
 
             {/* Footer */}
-            <footer className="bg-white py-6 text-center text-gray-600 shadow-md border-t border-gray-100">
-                <div className="container mx-auto">
-                    <div className="flex items-center justify-center">
-                        <FontAwesomeIcon icon={faCopyright} className="mr-2" />
-                        <p>2025 Pengaturan Poli Rumah Sakit Bumi Waras</p>
-                    </div>
-                    <p className="text-xs text-gray-400 mt-1">Dhia Fahmi G</p>
-                </div>
-            </footer>
+            <Footer copyright="Pengaturan Poli Rumah Sakit Bumi Waras" author="Dhia Fahmi G" />
         </div>
     );
 };

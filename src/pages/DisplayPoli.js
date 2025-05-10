@@ -215,10 +215,10 @@ const DisplayPoli = () => {
   }
   
   return (
-    <div id="kioskContainer" ref={containerRef} className="kiosk-mode">
+    <div id="kioskContainer" ref={containerRef} className="kiosk-mode flex flex-col min-h-screen">
       <Header />
       
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-8 flex-grow">
         {renderPoliGrid()}
       </div>
       
