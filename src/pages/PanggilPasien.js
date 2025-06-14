@@ -243,7 +243,7 @@ const PanggilPasien = () => {
         <div className="container mx-auto px-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center">
-              <Link to="/pengaturan" className="mr-4">
+              <Link to="/" className="mr-4">
                 <FontAwesomeIcon icon={faArrowLeft} className="text-2xl hover:text-green-200 transition-colors" />
               </Link>
               <div>

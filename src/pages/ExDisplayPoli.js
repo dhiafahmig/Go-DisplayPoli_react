@@ -145,11 +145,14 @@ const DisplayPoli = () => {
       );
     }
     
-    if (poliCount === 1) {      // Layout untuk 1 poli
+    if (poliCount === 1) {
+      // Layout untuk 1 poli
       return (
-        <div className="container max-w-7xl mx-auto px-4">
+        <div className="flex justify-center mb-16">
           {poliList.map(poli => (
-            <PoliCard key={poli.kd_ruang_poli} poli={poli} layout="single" />
+            <div key={poli.kd_ruang_poli} className="w-full md:w-1/2">
+              <PoliCard poli={poli} layout="single" />
+            </div>
           ))}
         </div>
       );
