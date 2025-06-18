@@ -5,6 +5,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 const DisplayPoli = lazy(() => import('./pages/DisplayPoli'));
 const PanggilPasien = lazy(() => import('./pages/PanggilPasien'));
 const PengaturanPoli = lazy(() => import('./pages/PengaturanPoli'));
+const JadwalDokter = lazy(() => import('./pages/JadwalDokter'));
 
 // Komponen loading
 const Loading = () => (
@@ -25,8 +26,11 @@ const NotFound = () => (
       <div className="bg-green-50 p-4 rounded-lg border border-green-200 inline-block mb-2">
         <p className="text-green-800 font-medium">/display/[kode_display]</p>
       </div>
-      <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 inline-block">
+      <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 inline-block mb-2">
         <p className="text-blue-800 font-medium">/panggil/[kode_ruang_poli]</p>
+      </div>
+      <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200 inline-block">
+        <p className="text-yellow-800 font-medium">/jadwal</p>
       </div>
     </div>
   </div>
@@ -40,6 +44,7 @@ function App() {
           <Route path="/" element={<PengaturanPoli />} />
           <Route path="/display/:kdDisplay" element={<DisplayPoli />} />
           <Route path="/panggil/:kd_ruang_poli" element={<PanggilPasien />} />
+          <Route path="/jadwal" element={<JadwalDokter />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>
@@ -47,4 +52,4 @@ function App() {
   );
 }
 
-export default App; 
+export default App;

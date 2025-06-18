@@ -12,6 +12,7 @@ import {
 // Import komponen
 import Header from '../components/Header';
 import Footer from '../components/Footer';
+import Sidebar from '../components/Sidebar';
 
 // Font Preloading
 const fontPreload = () => {
@@ -155,13 +156,14 @@ const PengaturanPoli = () => {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 font-sans">
-            {/* Header */}
-            <Header title="PENGATURAN POLI" icon={faCog} />
-
-            {/* Main Content */}
-            <div className="container mx-auto px-6 py-10">
-                <div className="bg-white rounded-xl shadow-[0_10px_25px_-5px_rgba(34,197,94,0.2),0_8px_10px_-6px_rgba(34,197,94,0.2)] overflow-hidden mb-12">
+        <div className="min-h-screen bg-gray-50 font-sans">
+            <Sidebar />
+            <div className="flex flex-col min-h-screen transition-all duration-300 ml-0 md:ml-[90px]">
+                {/* Header takes full width */}
+                <Header title="PENGATURAN POLI" icon={faCog} />
+                {/* Content with padding */}
+                <div className="flex-1 container mx-auto px-6 py-10">
+                    <div className="bg-white rounded-xl shadow-[0_10px_25px_-5px_rgba(34,197,94,0.2),0_8px_10px_-6px_rgba(34,197,94,0.2)] overflow-hidden mb-12">
                     <div className="bg-[#16a34a] text-white py-4 px-6">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center">
@@ -291,8 +293,9 @@ const PengaturanPoli = () => {
 
             {/* Footer */}
             <Footer copyright="Pengaturan Poli Rumah Sakit Bumi Waras" author="Dhia Fahmi G" />
+            </div>
         </div>
     );
 };
 
-export default PengaturanPoli; 
+export default PengaturanPoli;

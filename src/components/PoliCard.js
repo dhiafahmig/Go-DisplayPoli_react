@@ -109,10 +109,9 @@ const PoliCard = ({ poli, layout = 'multi', isSmall = false }) => {
         </div>
 
         {/* Doctor Card */}
-        <div className={`${cardClass} bg-gradient-to-br from-white to-gray-50`}>
-          <div className="gradient-header-alt text-white py-6 px-8">
+        <div className={`${cardClass} bg-gradient-to-br from-white to-gray-50`}>          <div className={headerClass}>
             <div className="flex items-center justify-center">
-              <i className="fas fa-user-md text-2xl mr-3 text-blue-200"></i>
+              <i className="fas fa-user-md text-2xl mr-3 text-green-200"></i>
               <h2 className={`${titleSize} font-semibold`}>Informasi Dokter</h2>
             </div>
           </div>
