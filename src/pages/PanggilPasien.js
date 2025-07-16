@@ -85,7 +85,8 @@ const PanggilPasien = () => {
           kd_ruang_poli: kd_ruang_poli,
           nm_poli: poliInfo?.nama_ruang_poli || 'Poli',
           no_reg: pasien.no_reg,
-          kd_display: 'DISPLAY1'
+          kd_display: 'DISPLAY1',
+          no_rawat: pasien.no_rawat // Pastikan no_rawat dikirimkan
         }),
       });
 

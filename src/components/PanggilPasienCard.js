@@ -229,7 +229,7 @@ const PanggilPasienCard = ({ pasien, onPanggil, onUpdateStatus, onResetStatus, i
           nm_poli: pasien.nm_poli || 'poli',
           no_reg: pasien.no_reg,
           kd_display: '1', // Default display
-          no_rawat: pasien.no_rawat
+          no_rawat: pasien.no_rawat // Pastikan no_rawat dikirimkan
         })
       });
 
