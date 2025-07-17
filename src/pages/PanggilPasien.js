@@ -10,7 +10,7 @@ const PanggilPasien = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [poliInfo, setPoliInfo] = useState(null);
-  const [pasienList, setPasienList] = useState([]);
+  const [pasienList, setPasienList] = useState([]); // Inisialisasi dengan array kosong
   const [isCallingPatient, setIsCallingPatient] = useState(false);
 
   // Update jam setiap detik
@@ -40,7 +40,7 @@ const PanggilPasien = () => {
       
       if (data.status === 'success') {
         setPoliInfo(data.data.poli_info);
-        setPasienList(data.data.antrian);
+        setPasienList(data.data.antrian || []); // Pastikan selalu array
         setError(null);
       } else {
         throw new Error('Format data tidak valid');
@@ -55,7 +55,7 @@ const PanggilPasien = () => {
           const oldData = await oldApiResponse.json();
           if (oldData.success) {
             setPoliInfo(oldData.data.poli_info);
-            setPasienList(oldData.data.pasien_list);
+            setPasienList(oldData.data.pasien_list || []); // Pastikan selalu array
             setError(null);
             return;
           }
@@ -65,6 +65,7 @@ const PanggilPasien = () => {
       }
       
       setError('Gagal memuat data pasien. Pastikan server berjalan dan API tersedia.');
+      setPasienList([]); // Reset ke array kosong jika terjadi error
     } finally {
       setIsLoading(false);
     }
@@ -329,4 +330,4 @@ const PanggilPasien = () => {
   );
 };
 
-export default PanggilPasien; 
+export default PanggilPasien;
