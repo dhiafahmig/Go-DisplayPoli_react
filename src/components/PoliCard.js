@@ -1,4 +1,5 @@
 import React from 'react';
+import MissedPatientsList from './MissedPatientsList';
 
 const PoliCard = ({ poli, layout = 'multi', isSmall = false }) => {
   // Tentukan class dan properties berdasarkan layout
@@ -61,9 +62,10 @@ const PoliCard = ({ poli, layout = 'multi', isSmall = false }) => {
   // Render for single layout with separate cards
   if (layout === 'single') {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-10 mb-28 max-w-7xl mx-auto">
-        {/* Patient Card */}
-        <div className={cardClass}>
+      <>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-10 mb-6 max-w-7xl mx-auto">
+          {/* Patient Card */}
+          <div className={cardClass}>
           <div className={headerClass}>
             <div className="flex items-center justify-center">
               <i className="fas fa-stethoscope text-2xl mr-3 text-green-200"></i>
@@ -148,13 +150,16 @@ const PoliCard = ({ poli, layout = 'multi', isSmall = false }) => {
             )}
           </div>
         </div>
-      </div>
+        </div>
+        <MissedPatientsList poli={poli} layout={layout} />
+      </>
     );
   }
 
   // Default render for other layouts
   return (
-    <div id={`poli-card-${poli.kd_ruang_poli}`} className={cardClass}>
+    <div className="w-full">
+      <div id={`poli-card-${poli.kd_ruang_poli}`} className={cardClass}>
       <div className={headerClass}>
         <div className="flex items-center justify-center">
           <i className="fas fa-stethoscope text-xl mr-3 text-green-200"></i>
@@ -212,6 +217,8 @@ const PoliCard = ({ poli, layout = 'multi', isSmall = false }) => {
           </div>
         )}
       </div>
+    </div>
+    <MissedPatientsList poli={poli} layout={layout} />
     </div>
   );
 };

@@ -174,9 +174,11 @@ const DisplayPoli = () => {
     } else {
       // Layout default untuk 4+ poli
       return (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-28">
-          {poliList.map(poli => (
-            <PoliCard key={poli.kd_ruang_poli} poli={poli} layout="multi" />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-10 mb-28">
+          {poliList.map((poli, index) => (
+            <div key={poli.kd_ruang_poli} className="w-full">
+              <PoliCard poli={poli} layout="multi" />
+            </div>
           ))}
         </div>
       );
